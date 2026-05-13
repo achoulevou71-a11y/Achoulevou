@@ -1,4 +1,4 @@
-   import { useState, useRef } from 'react'
+import { useState, useRef } from 'react'
 import html2canvas from 'html2canvas'
 import { Download, Copy, LogOut, Moon, Sun, Upload, Trash2 } from 'lucide-react'
 
@@ -26,10 +26,10 @@ export default function App() {
   const lojas = {
     amazon: { n: 'AMAZON', c: '#FF9900' },
     shopee: { n: 'SHOPEE', c: '#EE4D2D' },
-    shein: { n: 'SHEIN', c: '#000' },
-    ml: { n: 'MERCADO LIVRE', c: '#FFE600', t: '#000' },
+    shein: { n: 'SHEIN', c: '#000000' },
+    ml: { n: 'MERCADO LIVRE', c: '#FFE600', t: '#000000' },
     netshoes: { n: 'NETSHOES', c: '#532988' },
-    tiktok: { n: 'TIKTOK', c: '#000' }
+    tiktok: { n: 'TIKTOK', c: '#000000' },
   }
 
   const parse = v => v? parseInt(v.replace(/\D/g, '')) / 100 : 0
@@ -38,6 +38,7 @@ export default function App() {
 
   const descAuto = d.de && d.preco? Math.round(((parse(d.de) - parse(d.preco)) / parse(d.de)) * 100) : 0
   const desc = d.perc?? descAuto
+  const L = lojas[loja]
 
   const baixar = async () => {
     const canvas = await html2canvas(ref.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true })
@@ -45,14 +46,6 @@ export default function App() {
     a.href = canvas.toDataURL('image/png')
     a.download = `achado-${Date.now()}.png`
     a.click()
-  }
-
-  const copiar = async () => {
-    const canvas = await html2canvas(ref.current, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
-    canvas.toBlob(async b => {
-      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); alert('Imagem copiada!') }
-      catch { baixar() }
-    })
   }
 
   if (!login) return (
@@ -67,78 +60,58 @@ export default function App() {
   )
 
   return (
-    <div className={`min-h-screen ${dark? 'bg-zinc-950 text-white' : 'bg-zinc-50 text-zinc-900'}`}>
-      <div className="max-w-lg mx-auto p-4 pb-24">
+    <div className={dark? 'min-h-screen bg-zinc-950 text-white' : 'min-h-screen bg-zinc-50 text-zinc-900'}>
+      <div className="max-w-lg mx-auto p-4">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="font-bold text-lg">Achou Levou v4</h1>
-          <div className="flex gap-2">
-            <button onClick={() => setDark(!dark)} className="p-2 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800">{dark? <Sun size={18} /> : <Moon size={18} />}</button>
-            <button onClick={() => { setLogin(false); localStorage.removeItem('al') }} className="p-2 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800"><LogOut size={18} /></button>
-          </div>
+          <h1 className="font-bold">Achou Levou v4</h1>
+          <button onClick={() => setDark(!dark)} className="p-2">{dark? <Sun size={18}/> : <Moon size={18}/>}</button>
         </div>
 
-        {/* LOJAS */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
-          {Object.entries(lojas).map(([k, l]) => (
-            <button key={k} onClick={() => setLoja(k)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition ${loja === k? 'text-white' : 'bg-white dark:bg-zinc-800'}`} style={{ backgroundColor: loja === k? l.c : '', color: loja === k? (l.t || '#fff') : '' }}>{l.n}</button>
+        <div className="flex gap-2 overflow-x-auto mb-3">
+          {Object.entries(lojas).map(([k,l]) => (
+            <button key={k} onClick={()=>setLoja(k)} className={`px-3 py-1.5 rounded-full text-xs font-bold ${loja===k?'text-white':'bg-white dark:bg-zinc-800'}`} style={{backgroundColor: loja===k?l.c:'', color: loja===k?(l.t||'#fff'):''}}>{l.n}</button>
           ))}
         </div>
 
-        {/* CAMPOS */}
-        <div className="space-y-2">
-          <input value={d.link} onChange={e => set('link', e.target.value)} placeholder="Link de afiliado" className="w-full p-3 rounded-xl border dark:bg-zinc-900 dark:border-zinc-800 text-sm" />
-          <div className="grid grid-cols-3 gap-2">
-            <input value={d.de} onChange={e => set('de', fin(e.target.value))} placeholder="De R$" className="p-3 rounded-xl border dark:bg-zinc-900 dark:border-zinc-800" />
-            <input value={d.preco} onChange={e => set('preco', fin(e.target.value))} placeholder="Por R$" className="p-3 rounded-xl border dark:bg-zinc-900 dark:border-zinc-800" />
-            <input type="number" value={d.perc?? ''} onChange={e => set('perc', e.target.value? Number(e.target.value) : null)} placeholder={`% ${descAuto}`} className="p-3 rounded-xl border dark:bg-zinc-900 dark:border-zinc-800" />
-          </div>
-          <input value={d.titulo} onChange={e => set('titulo', e.target.value)} className="w-full p-3 rounded-xl border dark:bg-zinc-900 dark:border-zinc-800 font-bold" />
-          <input value={d.descricao} onChange={e => set('descricao', e.target.value)} placeholder="Descrição curta (opcional)" className="w-full p-3 rounded-xl border dark:bg-zinc-900 dark:border-zinc-800 text-sm" />
+        <input value={d.link} onChange={e=>set('link',e.target.value)} placeholder="Link afiliado" className="w-full p-3 rounded-xl border mb-2 dark:bg-zinc-900" />
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <input value={d.de} onChange={e=>set('de',fin(e.target.value))} placeholder="De" className="p-3 rounded-xl border dark:bg-zinc-900" />
+          <input value={d.preco} onChange={e=>set('preco',fin(e.target.value))} placeholder="Por" className="p-3 rounded-xl border dark:bg-zinc-900" />
+          <input type="number" value={d.perc??''} onChange={e=>set('perc',e.target.value?+e.target.value:null)} placeholder={`%${descAuto}`} className="p-3 rounded-xl border dark:bg-zinc-900" />
         </div>
+        <input value={d.titulo} onChange={e=>set('titulo',e.target.value)} className="w-full p-3 rounded-xl border mb-2 dark:bg-zinc-900 font-bold" />
 
-        <div className="flex gap-2 mt-3">
-          <button onClick={() => fileRef.current?.click()} className="flex-1 p-3 border-2 border-dashed rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-900"><Upload size={16} />{d.imagem? 'Trocar imagem' : 'Adicionar imagem'}</button>
-          {d.imagem && <button onClick={() => set('imagem', null)} className="p-3 bg-red-500 text-white rounded-xl"><Trash2 size={18} /></button>}
+        <div className="flex gap-2">
+          <button onClick={()=>fileRef.current?.click()} className="flex-1 p-2.5 border-2 border-dashed rounded-xl text-sm"><Upload size={14} className="inline mr-1"/>{d.imagem?'Trocar':'Imagem'}</button>
+          {d.imagem && <button onClick={()=>set('imagem',null)} className="p-2.5 bg-red-500 text-white rounded-xl"><Trash2 size={16}/></button>}
         </div>
-        <input ref={fileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = ev => set('imagem', ev.target.result); r.readAsDataURL(f) } }} className="hidden" />
+        <input ref={fileRef} type="file" accept="image/*" onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>set('imagem',ev.target.result);r.readAsDataURL(f)}}} className="hidden" />
 
-        {/* PREVIEW V4 */}
-        <div className="flex justify-center mt-6">
-          <div ref={ref} className="w-[360px] h-[450px] bg-white rounded-3xl p-5 flex flex-col shadow-xl" style={{ fontFamily: 'Inter, system-ui' }}>
-            {/* Topo */}
-            <div className="flex justify-between items-start">
-              <div className="px-3 py-1 rounded-full text-white text-[11px] font-bold" style={{ backgroundColor: lojas[loja].c, color: lojas[loja].t || '#fff' }}>{lojas[loja].n}</div>
-              {desc > 0 && <div className="px-3 py-1 rounded-full bg-red-600 text-white text-[11px] font-bold">-{desc}%</div>}
+        <div className="flex justify-center mt-5">
+          <div ref={ref} className="w-[340px] h-[440px] bg-white rounded-2xl p-4 flex flex-col">
+            <div className="flex justify-between">
+              <div className="px-2.5 py-1 rounded-full text-white text-xs font-bold" style={{backgroundColor:L.c,color:L.t||'#fff'}}>{L.n}</div>
+              {desc>0 && <div className="px-2.5 py-1 rounded-full bg-red-600 text-white text-xs font-bold">-{desc}%</div>}
             </div>
-
-            {/* Título centralizado */}
-            <h2 className="text-center font-black text-[28px] leading-none mt-3 text-black">{d.titulo}</h2>
-
-            {/* Imagem com altura fixa */}
-            <div className="h-[190px] flex items-center justify-center my-2">
-              {d.imagem? <img src={d.imagem} className="max-h-full max-w-full object-contain" alt="" /> : <div className="w-full h-full bg-zinc-50 rounded-xl" />}
+            <h2 className="text-center font-black text-2xl mt-2">{d.titulo}</h2>
+            <div className="h-[180px] flex items-center justify-center my-2">
+              {d.imagem?<img src={d.imagem} className="max-h-full max-w-full object-contain"/>:<div className="text-zinc-300">+</div>}
             </div>
-
-            {/* Descrição */}
-            {d.descricao && <p className="text-center text-[13px] text-zinc-600 h-[36px] overflow-hidden px-2" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{d.descricao}</p>}
-
-            {/* Preço */}
             <div className="flex justify-center mt-auto mb-3">
-              {d.preco && (
-                <div className="bg-black text-white px-6 py-2.5 rounded-2xl text-center">
-                  {d.de && <div className="text-[11px] opacity-70 line-through leading-none">De R$ {fmt(d.de)}</div>}
-                  <div className="text-[26px] font-black leading-none">R$ {fmt(d.preco)}</div>
-                </div>
-              )}
-            </div>
-
-            {/* LINK GRANDE */}
-            <div className="flex items-start gap-3 border-t border-zinc-100 pt-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wide">Link de afiliado:</div>
-                <div className="text-[13px] font-medium text-black leading-snug break-all">{d.link || 'cole seu link aqui'}</div>
+              <div className="bg-black text-white px-5 py-2 rounded-xl text-center">
+                {d.de && <div className="text-xs line-through opacity-70">De R$ {fmt(d.de)}</div>}
+                <div className="text-2xl font-black">R$ {fmt(d.preco)}</div>
               </div>
-              {d.link && <img src={`https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=${encodeURIComponent(d.link)}`} className="w-[52px] h-[52px] rounded-lg border border-zinc-200 shrink-0" alt="QR" />}
             </div>
+            <div className="border-t pt-2">
+              <div className="text-[10px] font-bold text-zinc-500">LINK DE AFILIADO:</div>
+              <div className="text-xs break-all">{d.link}</div>
+            </div>
+          </div>
+        </div>
 
-            <div className="text-[8px] text-center text-zinc-400 mt-2 tracking-widest">PUBLICIDADE • LINK DE AFILIADO</div       
+        <button onClick={baixar} className="w-full mt-4 bg-black text-white py-3 rounded-xl font-bold">BAIXAR</button>
+      </div>
+    </div>
+  )
+     }
