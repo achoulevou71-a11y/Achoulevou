@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import html2canvas from 'html2canvas'
-import { Download, Copy, LogOut, Moon, Sun, Upload, Palette, Type, ArrowLeft, Settings, Globe } from 'lucide-react'
+import { Download, Copy, LogOut, Moon, Sun, Upload, Palette, Type, ArrowLeft, Settings, X, Trash2 } from 'lucide-react'
 
 export default function App() {
   const [login, setLogin] = useState(localStorage.getItem('al') === '1')
@@ -8,28 +8,35 @@ export default function App() {
   const [pass, setPass] = useState('')
   const [dark, setDark] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
-
-  // Dados do produto
   const [loja, setLoja] = useState('amazon')
-  const [link, setLink] = useState('')
-  const [preco, setPreco] = useState('')
-  const [de, setDe] = useState('')
-  const [titulo, setTitulo] = useState('ACHADO DO DIA')
-  const [descricao, setDescricao] = useState('')
-  const [imagem, setImagem] = useState(null)
 
-  // Customização
+  // ESTADO SEPARADO POR LOJA - cada uma guarda seus dados
+  const [dadosLojas, setDadosLojas] = useState({
+    amazon: { link: '', preco: '', de: '', titulo: 'ACHADO DO DIA', descricao: '', imagem: null },
+    shopee: { link: '', preco: '', de: '', titulo: 'ACHADO DO DIA', descricao: '', imagem: null },
+    shein: { link: '', preco: '', de: '', titulo: 'ACHADO DO DIA', descricao: '', imagem: null },
+    ml: { link: '', preco: '', de: '', titulo: 'ACHADO DO DIA', descricao: '', imagem: null },
+    netshoes: { link: '', preco: '', de: '', titulo: 'ACHADO DO DIA', descricao: '', imagem: null },
+    tiktok: { link: '', preco: '', de: '', titulo: 'ACHADO DO DIA', descricao: '', imagem: null },
+  })
+
   const [corFundo, setCorFundo] = useState('#ffffff')
   const [corTexto, setCorTexto] = useState('#000000')
   const [corPreco, setCorPreco] = useState('#000000')
   const [fonte, setFonte] = useState('inter')
   const [tamanhoTitulo, setTamanhoTitulo] = useState(36)
-
-  // Redes sociais
   const [redeSocial, setRedeSocial] = useState('')
 
   const ref = useRef()
   const fileInputRef = useRef()
+
+  const dados = dadosLojas[loja]
+  const setDados = (campo, valor) => {
+    setDadosLojas(prev => ({
+     ...prev,
+      [loja]: {...prev[loja], [campo]: valor }
+    }))
+  }
 
   const lojas = {
     amazon: { nome: 'Amazon', cor: '#FF9900' },
@@ -37,7 +44,7 @@ export default function App() {
     shein: { nome: 'Shein', cor: '#000000' },
     ml: { nome: 'Mercado Livre', cor: '#FFE600', texto: '#000' },
     netshoes: { nome: 'Netshoes', cor: '#532988' },
-    tiktok: { nome: 'TikTok Shop', cor: '#000000' }
+    tiktok: { nome: 'TikTok', cor: '#000000' }
   }
 
   const redes = {
@@ -50,42 +57,48 @@ export default function App() {
   }
 
   const fontes = {
-    inter: 'Inter, system-ui, sans-serif',
+    inter: 'Inter, system-ui',
     poppins: "'Poppins', sans-serif",
     oswald: "'Oswald', sans-serif"
   }
 
-  const desc = de && preco? Math.round(((parseFloat(de) - parseFloat(preco)) / parseFloat(de)) * 100) : 0
+  // FORMATAÇÃO BRASILEIRA CORRETA
+  const parsePreco = (val) => {
+    if (!val) return 0
+    // Remove tudo exceto números
+    const num = val.toString().replace(/\D/g, '')
+    return parseInt(num) / 100
+  }
 
-  const formatarPreco = (valor) => {
-    if (!valor) return ''
-    const num = parseFloat(valor.replace(',', '.'))
+  const formatarPreco = (val) => {
+    if (!val) return ''
+    const num = typeof val === 'string'? parsePreco(val) : val
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
-  const handleLojaChange = (novaLoja) => {
-    setLoja(novaLoja)
-    setLink('') // Limpa link ao trocar loja
+  const formatarInput = (val) => {
+    const num = val.replace(/\D/g, '')
+    if (!num) return ''
+    const formatted = (parseInt(num) / 100).toFixed(2)
+    return formatted.replace('.', ',')
   }
+
+  const desc = dados.de && dados.preco? Math.round(((parsePreco(dados.de) - parsePreco(dados.preco)) / parsePreco(dados.de)) * 100) : 0
 
   const handleImagem = (e) => {
     const file = e.target.files[0]
     if (file) {
       const reader = new FileReader()
-      reader.onload = (ev) => setImagem(ev.target.result)
+      reader.onload = (ev) => setDados('imagem', ev.target.result)
       reader.readAsDataURL(file)
     }
   }
 
   const baixar = async () => {
-    const canvas = await html2canvas(ref.current, {
-      scale: 3,
-      backgroundColor: corFundo,
-      useCORS: true
-    })
+    const canvas = await html2canvas(ref.current, { scale: 3, backgroundColor: corFundo, useCORS: true, logging: false })
     const a = document.createElement('a')
     a.href = canvas.toDataURL('image/png')
-    a.download = `achado-${loja}-${Date.now()}.png`
+    a.download = `${loja}-${Date.now()}.png`
     a.click()
   }
 
@@ -94,338 +107,176 @@ export default function App() {
     canvas.toBlob(async (b) => {
       try {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })])
-        alert('✅ Imagem copiada!')
+        alert('Copiado!')
       } catch { baixar() }
     })
   }
 
   if (!login) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="bg-white rounded- p-8 w-full max-w-sm shadow-2xl">
-        <h1 className="text-3xl font-black text-center mb-2" style={{ fontFamily: fontes.oswald }}>ACHOU LEVOU</h1>
-        <p className="text-center text-sm text-zinc-500 mb-6">Gerador de Ofertas v2</p>
-        <input
-          value={user}
-          onChange={e => setUser(e.target.value)}
-          placeholder="Usuário"
-          className="w-full p-3.5 border border-zinc-200 rounded-2xl mb-3 text- focus:outline-none focus:ring-2 focus:ring-black"
-        />
-        <input
-          type="password"
-          value={pass}
-          onChange={e => setPass(e.target.value)}
-          placeholder="Senha"
-          className="w-full p-3.5 border border-zinc-200 rounded-2xl mb-5 text- focus:outline-none focus:ring-2 focus:ring-black"
-        />
-        <button
-          onClick={() => { if (user === 'admin' && pass === '123456') { setLogin(true); localStorage.setItem('al', '1') } else { alert('Usuário ou senha incorretos') } }}
-          className="w-full p-3.5 bg-black text-white rounded-2xl font-semibold hover:bg-zinc-800 transition"
-        >
-          Entrar
-        </button>
-        <p className="text-xs text-center mt-4 text-zinc-400">admin / 123456</p>
+      <div className="bg-white rounded-3xl p-8 w-full max-w-sm">
+        <h1 className="text-3xl font-black text-center mb-6">Achou Levou</h1>
+        <input value={user} onChange={e => setUser(e.target.value)} placeholder="Usuário" className="w-full p-3.5 border rounded-2xl mb-3" />
+        <input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="Senha" className="w-full p-3.5 border rounded-2xl mb-4" />
+        <button onClick={() => { if (user === 'admin' && pass === '123456') { setLogin(true); localStorage.setItem('al', '1') } }} className="w-full p-3.5 bg-black text-white rounded-2xl font-bold">Entrar</button>
       </div>
     </div>
   )
 
   if (showConfig) return (
-    <div className={`min-h-screen ${dark? 'bg-zinc-950 text-white' : 'bg-zinc-50 text-zinc-900'}`}>
-      <header className={`sticky top-0 z-50 ${dark? 'bg-zinc-950/90' : 'bg-white/90'} backdrop-blur-xl border-b ${dark? 'border-zinc-800' : 'border-zinc-200'}`}>
-        <div className="flex items-center gap-3 p-4 max-w-lg mx-auto">
-          <button onClick={() => setShowConfig(false)} className={`p-2 rounded-xl ${dark? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'}`}>
-            <ArrowLeft size={20} />
-          </button>
+    <div className={`min-h-screen ${dark? 'bg-zinc-950 text-white' : 'bg-zinc-50'}`}>
+      <header className={`sticky top-0 ${dark? 'bg-zinc-950' : 'bg-white'} border-b ${dark? 'border-zinc-800' : 'border-zinc-200'}`}>
+        <div className="flex items-center gap-3 p-4 max-w-2xl mx-auto">
+          <button onClick={() => setShowConfig(false)} className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800"><ArrowLeft size={20} /></button>
           <h1 className="font-semibold">Configurações</h1>
         </div>
       </header>
-
-      <div className="p-4 max-w-lg mx-auto space-y-4">
-        <div className={`p-4 rounded-2xl ${dark? 'bg-zinc-900' : 'bg-white'} border ${dark? 'border-zinc-800' : 'border-zinc-200'}`}>
-          <div className="flex items-center gap-3 mb-2">
-            <Globe size={18} className="opacity-60" />
-            <span className="font-medium">Idioma</span>
-          </div>
-          <p className="text-sm opacity-60">Português (Brasil) - pt-BR</p>
-        </div>
-
-        <div className={`p-4 rounded-2xl ${dark? 'bg-zinc-900' : 'bg-white'} border ${dark? 'border-zinc-800' : 'border-zinc-200'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {dark? <Moon size={18} className="opacity-60" /> : <Sun size={18} className="opacity-60" />}
-              <span className="font-medium">Tema</span>
-            </div>
-            <button
-              onClick={() => setDark(!dark)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium ${dark? 'bg-zinc-800' : 'bg-zinc-100'}`}
-            >
-              {dark? 'Escuro' : 'Claro'}
-            </button>
-          </div>
-        </div>
-
-        <button
-          onClick={() => { setLogin(false); localStorage.removeItem('al'); setShowConfig(false) }}
-          className="w-full p-4 bg-red-500 text-white rounded-2xl font-medium hover:bg-red-600 transition"
-        >
-          Sair da conta
-        </button>
+      <div className="p-4 max-w-2xl mx-auto">
+        <button onClick={() => { setLogin(false); localStorage.removeItem('al') }} className="w-full p-4 bg-red-500 text-white rounded-2xl">Sair</button>
       </div>
     </div>
   )
 
   return (
-    <div className={`min-h-screen ${dark? 'bg-zinc-950 text-white' : 'bg-zinc-50 text-zinc-900'}`} style={{ fontFamily: fontes.inter }}>
-      {/* HEADER FIXO - SEM FAIXA PRETA */}
+    <div className={`min-h-screen ${dark? 'bg-zinc-950 text-white' : 'bg-zinc-50 text-zinc-900'}`}>
       <header className={`sticky top-0 z-40 ${dark? 'bg-zinc-950' : 'bg-white'} border-b ${dark? 'border-zinc-800' : 'border-zinc-200'}`}>
-        <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
-          <h1 className="text- font-semibold tracking-tight">Achou Levou</h1>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setDark(!dark)} className={`p-2.5 rounded-xl transition ${dark? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'}`}>
-              {dark? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            <button onClick={() => setShowConfig(true)} className={`p-2.5 rounded-xl transition ${dark? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'}`}>
-              <Settings size={18} />
-            </button>
-            <button onClick={() => { setLogin(false); localStorage.removeItem('al') }} className={`p-2.5 rounded-xl transition ${dark? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'}`}>
-              <LogOut size={18} />
-            </button>
+        <div className="flex items-center justify-between p-4 max-w-2xl mx-auto">
+          <h1 className="font-semibold">Achou Levou v3</h1>
+          <div className="flex gap-1">
+            <button onClick={() => setDark(!dark)} className="p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800">{dark? <Sun size={18} /> : <Moon size={18} />}</button>
+            <button onClick={() => setShowConfig(true)} className="p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800"><Settings size={18} /></button>
+            <button onClick={() => { setLogin(false); localStorage.removeItem('al') }} className="p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800"><LogOut size={18} /></button>
           </div>
         </div>
       </header>
 
-      <div className="p-4 max-w-lg mx-auto pb-28">
-        {/* LOJAS */}
-        <div>
-          <p className="text- font-medium opacity-60 mb-2 px-1">Loja afiliada</p>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+      <div className="p-4 max-w-2xl mx-auto pb-28">
+        {/* LOJAS - SCROLL CORRIGIDO */}
+        <div className="mb-4">
+          <p className="text-xs opacity-60 mb-2 px-1">Lojas</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
             {Object.entries(lojas).map(([key, l]) => (
-              <button
-                key={key}
-                onClick={() => handleLojaChange(key)}
-                className={`px-4 py-2 rounded-full text- font-medium whitespace-nowrap transition-all border ${
-                  loja === key
-                   ? 'text-white border-transparent shadow-md scale-105'
-                    : dark? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800' : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
-                }`}
-                style={{ backgroundColor: loja === key? l.cor : '', color: loja === key? (l.texto || '#fff') : '' }}
-              >
+              <button key={key} onClick={() => setLoja(key)} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border-2 transition-all ${loja === key? 'scale-105 shadow-lg' : ''} ${dark? 'border-zinc-800' : 'border-transparent'}`} style={{ backgroundColor: loja === key? l.cor : dark? '#18181b' : '#fff', color: loja === key? (l.texto || '#fff') : dark? '#a1a1aa' : '#52525b' }}>
                 {l.nome}
               </button>
             ))}
           </div>
         </div>
 
-        {/* REDES SOCIAIS - SEPARADO */}
-        <div className="mt-4">
-          <p className="text- font-medium opacity-60 mb-2 px-1">Compartilhar em</p>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {/* REDES */}
+        <div className="mb-5">
+          <p className="text-xs opacity-60 mb-2 px-1">Redes</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
             {Object.entries(redes).map(([key, r]) => (
-              <button
-                key={key}
-                onClick={() => setRedeSocial(redeSocial === key? '' : key)}
-                className={`px-3.5 py-2 rounded-full text- font-medium whitespace-nowrap transition-all border ${
-                  redeSocial === key
-                   ? 'text-white border-transparent'
-                    : dark? 'bg-zinc-900 border-zinc-800 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-500'
-                }`}
-                style={{ backgroundColor: redeSocial === key? r.cor : '' }}
-              >
+              <button key={key} onClick={() => setRedeSocial(redeSocial === key? '' : key)} className="px-3 py-1.5 rounded-full text-xs whitespace-nowrap border" style={{ backgroundColor: redeSocial === key? r.cor : 'transparent', color: redeSocial === key? '#fff' : dark? '#71717a' : '#71717a', borderColor: dark? '#27272a' : '#e4e4e7' }}>
                 {r.nome}
               </button>
             ))}
           </div>
         </div>
 
-        {/* INPUTS - CONTRASTE CORRIGIDO */}
-        <div className="mt-5 space-y-3">
-          <input
-            value={link}
-            onChange={e => setLink(e.target.value)}
-            placeholder={`Link de afiliado ${lojas[loja].nome}`}
-            className={`w-full p-3.5 rounded-2xl border text- transition focus:outline-none focus:ring-2 focus:ring-black/20 ${
-              dark? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600' : 'bg-white border-zinc-200 text-zinc-900 placeholder-zinc-400'
-            }`}
-          />
+        {/* INPUTS */}
+        <div className="space-y-3">
+          <input value={dados.link} onChange={e => setDados('link', e.target.value)} placeholder="Link afiliado" className={`w-full p-3.5 rounded-2xl border text-sm ${dark? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200'}`} />
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text- opacity-60 px-1">De</label>
-              <input
-                value={de}
-                onChange={e => setDe(e.target.value.replace(',', '.'))}
-                placeholder="0,00"
-                type="text"
-                inputMode="decimal"
-                className={`w-full p-3.5 rounded-2xl border text- mt-1 transition focus:outline-none focus:ring-2 focus:ring-black/20 ${
-                  dark? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600' : 'bg-white border-zinc-200 text-zinc-900 placeholder-zinc-400'
-                }`}
-              />
+              <label className="text-xs opacity-60 px-1">De R$</label>
+              <input value={dados.de} onChange={e => setDados('de', formatarInput(e.target.value))} placeholder="2.000,00" className={`w-full p-3.5 rounded-2xl border mt-1 ${dark? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200'}`} />
             </div>
             <div>
-              <label className="text- opacity-60 px-1">Por</label>
-              <input
-                value={preco}
-                onChange={e => setPreco(e.target.value.replace(',', '.'))}
-                placeholder="0,00"
-                type="text"
-                inputMode="decimal"
-                className={`w-full p-3.5 rounded-2xl border text- mt-1 transition focus:outline-none focus:ring-2 focus:ring-black/20 ${
-                  dark? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600' : 'bg-white border-zinc-200 text-zinc-900 placeholder-zinc-400'
-                }`}
-              />
+              <label className="text-xs opacity-60 px-1">Por R$</label>
+              <input value={dados.preco} onChange={e => setDados('preco', formatarInput(e.target.value))} placeholder="1.000,00" className={`w-full p-3.5 rounded-2xl border mt-1 ${dark? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200'}`} />
             </div>
           </div>
 
-          <input
-            value={titulo}
-            onChange={e => setTitulo(e.target.value)}
-            placeholder="Título (ex: ACHADO DO DIA)"
-            className={`w-full p-3.5 rounded-2xl border text- transition focus:outline-none focus:ring-2 focus:ring-black/20 ${
-              dark? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600' : 'bg-white border-zinc-200 text-zinc-900 placeholder-zinc-400'
-            }`}
-          />
+          <input value={dados.titulo} onChange={e => setDados('titulo', e.target.value)} placeholder="Título" className={`w-full p-3.5 rounded-2xl border text-sm ${dark? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200'}`} />
 
-          <textarea
-            value={descricao}
-            onChange={e => setDescricao(e.target.value)}
-            placeholder="Descrição do produto (opcional)"
-            rows={2}
-            className={`w-full p-3.5 rounded-2xl border text- resize-none transition focus:outline-none focus:ring-2 focus:ring-black/20 ${
-              dark? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600' : 'bg-white border-zinc-200 text-zinc-900 placeholder-zinc-400'
-            }`}
-          />
+          <textarea value={dados.descricao} onChange={e => setDados('descricao', e.target.value)} placeholder="Descrição (máx 2 linhas)" rows={2} maxLength={120} className={`w-full p-3.5 rounded-2xl border text-sm resize-none ${dark? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200'}`} />
         </div>
 
-        {/* CUSTOMIZAÇÃO */}
-        <div className={`mt-5 p-4 rounded-2xl border ${dark? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <Palette size={16} className="opacity-60" />
-            <span className="text- font-medium">Personalizar</span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <div>
-              <label className="text- opacity-60">Fundo</label>
-              <input type="color" value={corFundo} onChange={e => setCorFundo(e.target.value)} className="w-full h-9 rounded-lg cursor-pointer mt-1" />
+        {/* PERSONALIZAÇÃO */}
+        <div className={`mt-4 p-3 rounded-2xl border ${dark? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-200'}`}>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Palette size={14} className="opacity-50" />
+              <input type="color" value={corFundo} onChange={e => setCorFundo(e.target.value)} className="w-8 h-8 rounded cursor-pointer" title="Fundo" />
+              <input type="color" value={corTexto} onChange={e => setCorTexto(e.target.value)} className="w-8 h-8 rounded cursor-pointer" title="Texto" />
+              <input type="color" value={corPreco} onChange={e => setCorPreco(e.target.value)} className="w-8 h-8 rounded cursor-pointer" title="Preço" />
             </div>
-            <div>
-              <label className="text- opacity-60">Texto</label>
-              <input type="color" value={corTexto} onChange={e => setCorTexto(e.target.value)} className="w-full h-9 rounded-lg cursor-pointer mt-1" />
-            </div>
-            <div>
-              <label className="text- opacity-60">Preço</label>
-              <input type="color" value={corPreco} onChange={e => setCorPreco(e.target.value)} className="w-full h-9 rounded-lg cursor-pointer mt-1" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Type size={16} className="opacity-60" />
-            <select value={fonte} onChange={e => setFonte(e.target.value)} className={`flex-1 p-2 rounded-lg text- border ${dark? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'}`}>
+            <select value={fonte} onChange={e => setFonte(e.target.value)} className={`text-xs p-1.5 rounded border ${dark? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50'}`}>
               <option value="inter">Inter</option>
               <option value="poppins">Poppins</option>
               <option value="oswald">Oswald</option>
             </select>
-            <input type="range" min="24" max="48" value={tamanhoTitulo} onChange={e => setTamanhoTitulo(e.target.value)} className="w-20" />
           </div>
         </div>
 
-        {/* UPLOAD IMAGEM */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className={`w-full mt-3 p-3.5 rounded-2xl border-2 border-dashed transition flex items-center justify-center gap-2 text- font-medium ${
-            dark? 'border-zinc-700 hover:bg-zinc-900 text-zinc-400' : 'border-zinc-300 hover:bg-zinc-50 text-zinc-600'
-          }`}
-        >
-          <Upload size={16} />
-          {imagem? 'Trocar imagem do produto' : 'Adicionar imagem do produto'}
-        </button>
+        {/* IMAGEM COM BOTÃO REMOVER */}
+        <div className="mt-3 flex gap-2">
+          <button onClick={() => fileInputRef.current?.click()} className={`flex-1 p-3 rounded-2xl border-2 border-dashed text-sm flex items-center justify-center gap-2 ${dark? 'border-zinc-700 hover:bg-zinc-900' : 'border-zinc-300 hover:bg-zinc-50'}`}>
+            <Upload size={14} /> {dados.imagem? 'Trocar imagem' : 'Adicionar imagem'}
+          </button>
+          {dados.imagem && (
+            <button onClick={() => setDados('imagem', null)} className="p-3 rounded-2xl bg-red-500 text-white hover:bg-red-600">
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImagem} className="hidden" />
 
-        {/* PREVIEW DO CARD */}
+        {/* PREVIEW - LAYOUT FIXO QUE NÃO QUEBRA */}
         <div className="mt-5">
-          <p className="text- font-medium opacity-60 mb-2 px-1">Preview</p>
-          <div
-            ref={ref}
-            className="w-full aspect-[4/5] rounded- p-7 flex flex-col relative overflow-hidden shadow-xl"
-            style={{ backgroundColor: corFundo, fontFamily: fontes[fonte], color: corTexto }}
-          >
-            {/* Gradiente da loja */}
-            <div className="absolute inset-0 opacity-[0.08]" style={{ background: `linear-gradient(135deg, ${lojas[loja].cor}, transparent 60%)` }} />
+          <div ref={ref} className="w-full max-w- mx-auto aspect-[4/5] rounded-3xl p-6 flex flex-col relative overflow-hidden shadow-2xl" style={{ backgroundColor: corFundo, fontFamily: fontes[fonte], color: corTexto }}>
+            <div className="absolute inset-0 opacity-5" style={{ background: `linear-gradient(135deg, ${lojas[loja].cor}, transparent)` }} />
 
-            {/* Badge loja */}
-            <div className="relative z-10 flex justify-between items-start">
-              <div className="px-3 py-1.5 rounded-full text-white text- font-bold tracking-wide" style={{ backgroundColor: lojas[loja].cor, color: lojas[loja].texto || '#fff' }}>
+            <div className="relative z-10 flex justify-between items-start mb-3">
+              <div className="px-2.5 py-1 rounded-full text-white text- font-bold" style={{ backgroundColor: lojas[loja].cor, color: lojas[loja].texto || '#fff' }}>
                 {lojas[loja].nome.toUpperCase()}
               </div>
-              {desc > 0 && (
-                <div className="bg-red-600 text-white px-3 py-1 rounded-full text- font-bold">
-                  -{desc}%
-                </div>
-              )}
+              {desc > 0 && <div className="bg-red-600 text-white px-2.5 py-1 rounded-full text- font-bold">-{desc}%</div>}
             </div>
 
-            {/* Imagem do produto */}
-            {imagem && (
-              <div className="relative z-10 mt-4 mb-3 flex-1 flex items-center justify-center">
-                <img src={imagem} alt="Produto" className="max-h-[45%] max-w-full object-contain rounded-2xl" />
+            {/* IMAGEM COM ALTURA FIXA - NÃO EMPURRA */}
+            {dados.imagem && (
+              <div className="relative z-10 w-full h-[38%] mb-3 flex items-center justify-center">
+                <img src={dados.imagem} className="max-w-full max-h-full object-contain rounded-xl" alt="" />
               </div>
             )}
 
-            {/* Conteúdo */}
             <div className="relative z-10 mt-auto">
-              <h2 className="font-black leading-[0.9] tracking-tighter" style={{ fontSize: `${tamanhoTitulo}px`, color: corTexto }}>
-                {titulo.split(' ').map((word, i) => (
-                  <span key={i} className="block">{word}</span>
-                ))}
+              {/* TÍTULO COM TAMANHO ADAPTATIVO */}
+              <h2 className="font-black leading-[0.85] tracking-tighter" style={{ fontSize: dados.imagem? '28px' : `${tamanhoTitulo}px`, color: corTexto }}>
+                {dados.titulo.split(' ').slice(0, 3).map((w, i) => <div key={i}>{w}</div>)}
               </h2>
 
-              {descricao && (
-                <p className="mt-2 text- opacity-70 line-clamp-2">{descricao}</p>
-              )}
+              {dados.descricao && <p className="mt-2 text- opacity-70 leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{dados.descricao}</p>}
 
-              {preco && (
-                <div className="mt-4 inline-block" style={{ backgroundColor: corPreco, color: corFundo }}>
-                  <div className="px-4 py-3 rounded-2xl">
-                    {de && <p className="text- line-through opacity-60">R$ {formatarPreco(de)}</p>}
-                    <p className="text- font-black leading-none tracking-tight">R$ {formatarPreco(preco)}</p>
+              {dados.preco && (
+                <div className="mt-3 inline-block">
+                  <div className="px-3.5 py-2.5 rounded-2xl" style={{ backgroundColor: corPreco, color: corFundo }}>
+                    {dados.de && <p className="text- line-through opacity-70">R$ {formatarPreco(dados.de)}</p>}
+                    <p className="text- font-black leading-none">R$ {formatarPreco(dados.preco)}</p>
                   </div>
                 </div>
               )}
 
-              {/* Link - AGORA VISÍVEL NO DARK */}
-              <div className="mt-3 flex items-center gap-2">
-                {redeSocial && (
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center text- text-white" style={{ backgroundColor: redes[redeSocial].cor }}>
-                    {redes[redeSocial].nome[0]}
-                  </div>
-                )}
-                <p className="text- opacity-50 truncate flex-1" style={{ color: corTexto }}>
-                  {link || 'seu-link-de-afiliado'}
-                </p>
+              {/* LINK MAIOR E VISÍVEL */}
+              <div className="mt-2.5 flex items-center gap-1.5">
+                {redeSocial && <div className="w-4 h-4 rounded-full" style={{ backgroundColor: redes[redeSocial].cor }} />}
+                <p className="text- opacity-60 truncate" style={{ color: corTexto, maxWidth: '85%' }}>{dados.link || 'link afiliado aqui'}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* BOTÕES */}
-        <div className="grid grid-cols-2 gap-3 mt-5">
-          <button onClick={baixar} className="p-4 bg-black text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-zinc-800 transition active:scale-[0.98]">
-            <Download size={18} />
-            Baixar PNG
-          </button>
-          <button onClick={copiar} className={`p-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition active:scale-[0.98] ${dark? 'bg-zinc-800 text-white hover:bg-zinc-700' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>
-            <Copy size={18} />
-            Copiar
-          </button>
+        <div className="grid grid-cols-2 gap-3 mt-5 max-w- mx-auto">
+          <button onClick={baixar} className="p-3.5 bg-black text-white rounded-2xl font-medium flex items-center justify-center gap-2 active:scale-95 transition"><Download size={18} />Baixar</button>
+          <button onClick={copiar} className={`p-3.5 rounded-2xl font-medium flex items-center justify-center gap-2 active:scale-95 transition ${dark? 'bg-zinc-800 text-white' : 'bg-zinc-900 text-white'}`}><Copy size={18} />Copiar</button>
         </div>
       </div>
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Poppins:wght@600;700;900&family=Oswald:wght@600;700&display=swap');
-       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-       .scrollbar-hide::-webkit-scrollbar { display: none; }
-       .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      `}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Poppins:wght@600;900&family=Oswald:wght@600;700&display=swap');`}</style>
     </div>
   )
 }
